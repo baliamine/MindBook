@@ -2,6 +2,7 @@ const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const hashPassword = require("../utils/hashPassword");
 const comparePassword = require("../utils/comparePassword");
+
 const Register = async (req, res) => {
   try {
     const { username, email, password, phone } = req.body;
