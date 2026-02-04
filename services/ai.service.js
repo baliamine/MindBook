@@ -81,22 +81,6 @@ ${notesContext}`;
   } catch (error) {
     console.error("❌ Groq AI Service Error:", error);
 
-    if (error.status === 401 || error.message?.includes("API key")) {
-      throw new Error(
-        "Invalid Groq API key. Please check your GROQ_API_KEY in .env file.",
-      );
-    }
-
-    if (error.status === 429) {
-      throw new Error(
-        "Groq API rate limit exceeded. Please wait a moment and try again.",
-      );
-    }
-
-    if (error.status === 400) {
-      throw new Error("Invalid request to Groq API. Please check your input.");
-    }
-
     throw new Error(
       `Failed to generate AI response: ${error.message || "Unknown error"}`,
     );
