@@ -1,0 +1,949 @@
+openapi: 3.0.0
+info:
+  title: MindBook API
+  description: Complete API documentation for the MindBook backend application.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: refreshToken
+
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [visitor, user, admin]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Note:
+      type: object
+      properties:
+        _id:
+          type: string
+        user:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        isLocked:
+          type: boolean
+        file:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SharedNote:
+      type: object
+      properties:
+        _id:
+          type: string
+        note:
+          type: string
+        user:
+          type: string
+        linkId:
+          type: string
+        permission:
+          type: string
+          enum: [read, edit]
+        expiresInDays:
+          type: number
+        unlockAllowed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ValidationError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              value:
+                type: string
+              msg:
+                type: string
+              path:
+                type: string
+              location:
+                type: string
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+
+tags:
+  - name: Auth
+    description: Authentication and Token Management
+  - name: Notes
+    description: Note creation, management, and retrieval
+  - name: Shared Notes
+    description: Public link sharing for notes
+  - name: Profile
+    description: User profile and account management
+  - name: Admin
+    description: Administrative actions
+  - name: AI
+    description: AI-powered assistance
+
+paths:
+  # ============================
+  # AUTH
+  # ============================
+  /api/user/register:
+    post:
+      summary: Register a new user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password, phone]
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                phone:
+                  type: string
+                  pattern: ^\+?[0-9]{8,15}$
+      responses:
+        201:
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  accessToken:
+                    type: string
+        400:
+          description: Validation error or User already exists
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ValidationError"
+                  - $ref: "#/components/schemas/Error"
+
+  /api/user/login:
+    post:
+      summary: Login user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        200:
+          description: Login successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                description: refreshToken cookie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  accessToken:
+                    type: string
+        400:
+          description: Invalid credentials or Validation error
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ValidationError"
+                  - $ref: "#/components/schemas/Error"
+
+  /api/user/refresh-token:
+    post:
+      summary: Refresh access token
+      tags: [Auth]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        200:
+          description: New access token generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+        401:
+          description: Invalid or missing token
+        404:
+          description: User not found
+
+  /api/user/forgot-password:
+    post:
+      summary: Request password reset OTP
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        200:
+          description: OTP sent to email
+        404:
+          description: User not found
+
+  /api/user/reset-password:
+    post:
+      summary: Reset password using OTP
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp, newPassword]
+              properties:
+                email:
+                  type: string
+                  format: email
+                otp:
+                  type: number
+                newPassword:
+                  type: string
+                  minLength: 6
+      responses:
+        200:
+          description: Password reset successfully
+        400:
+          description: Invalid or expired OTP
+
+  /api/user/logout:
+    post:
+      summary: Logout user
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      responses:
+        200:
+          description: Logged out successfully
+
+  # ============================
+  # NOTES
+  # ============================
+  /api/note/new-note:
+    post:
+      summary: Create a new note
+      tags: [Notes]
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                title:
+                  type: string
+                  maxLength: 100
+                content:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                password:
+                  type: string
+                  minLength: 6
+                file:
+                  type: string
+                  format: binary
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                password:
+                  type: string
+      responses:
+        201:
+          description: Note created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  note:
+                    $ref: "#/components/schemas/Note"
+        400:
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+  /api/note/edit-note/{noteId}:
+    put:
+      summary: Edit an existing note
+      tags: [Notes]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: noteId
+          schema:
+            type: string
+          required: true
+          description: ID of the note to edit
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                notePassword:
+                  type: string
+                  description: Password if the note is locked
+                file:
+                  type: string
+                  format: binary
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                notePassword:
+                  type: string
+      responses:
+        200:
+          description: Note updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  note:
+                    $ref: "#/components/schemas/Note"
+        403:
+          description: Locked note - Password required or incorrect
+        404:
+          description: Note not found
+        400:
+          description: Validation error
+
+  /api/note/delete-note/{noteId}:
+    delete:
+      summary: Delete a note
+      tags: [Notes]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: noteId
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notePassword:
+                  type: string
+      responses:
+        200:
+          description: Note deleted successfully
+        403:
+          description: Locked note - Password required or incorrect
+        404:
+          description: Note not found
+
+  /api/note/all-notes:
+    get:
+      summary: Get all notes for the user (with filtering)
+      tags: [Notes]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: sort
+          schema:
+            type: string
+            default: -createdAt
+          description: Sort fields (comma separated). Default is newest first.
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search term for title, content, or tags
+      responses:
+        200:
+          description: Notes retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                  notes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Note"
+
+  /api/note/note-byId/{noteId}:
+    get:
+      summary: Get a single note by ID
+      tags: [Notes]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: noteId
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notePassword:
+                  type: string
+      responses:
+        200:
+          description: Note retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  note:
+                    $ref: "#/components/schemas/Note"
+        403:
+          description: Locked note - Password required or incorrect
+        404:
+          description: Note not found
+
+  /api/note/set-note-password/{noteId}:
+    post:
+      summary: Set a password for a note
+      tags: [Notes]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: noteId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newPassword]
+              properties:
+                newPassword:
+                  type: string
+                  minLength: 6
+      responses:
+        200:
+          description: Note password set successfully
+        400:
+          description: Password too short
+
+  /api/note/update-note-password/{noteId}:
+    put:
+      summary: Update a note's password
+      tags: [Notes]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: noteId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 6
+      responses:
+        200:
+          description: Note password updated successfully
+        403:
+          description: Incorrect current password
+
+  /api/note/delete-note-password/{noteId}:
+    delete:
+      summary: Remove a note's password
+      tags: [Notes]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: noteId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword]
+              properties:
+                currentPassword:
+                  type: string
+      responses:
+        200:
+          description: Note password removed successfully
+        403:
+          description: Incorrect current password
+
+  # ============================
+  # SHARED NOTES
+  # ============================
+  /api/shared-note/create-shared-link:
+    post:
+      summary: Create a shareable link for a note
+      tags: [Shared Notes]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [noteId]
+              properties:
+                noteId:
+                  type: string
+                permission:
+                  type: string
+                  enum: [read, edit]
+                  default: read
+                expiresInDays:
+                  type: number
+                  default: 30
+                notePassword:
+                  type: string
+                  description: Required if note is locked
+      responses:
+        200:
+          description: Share link created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  link:
+                    type: string
+                  permission:
+                    type: string
+                  expiresInDays:
+                    type: number
+                  unlocked:
+                    type: boolean
+        403:
+          description: Note is locked and password missing/incorrect
+        404:
+          description: Note not found
+
+  /api/shared-note/get-shared-link/{linkId}:
+    get:
+      summary: Get a shared note via link
+      tags: [Shared Notes]
+      parameters:
+        - in: path
+          name: linkId
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Note fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  sharedNote:
+                    $ref: "#/components/schemas/SharedNote"
+        403:
+          description: Link expired
+        404:
+          description: Link or Note not found
+        200-Locked:
+          description: Note is locked (special case, returns success=false with locked=true)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  locked:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Password required"
+
+  # ============================
+  # PROFILE
+  # ============================
+  /api/profile/get-profile:
+    get:
+      summary: Get current user profile
+      tags: [Profile]
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Profile retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  user:
+                    $ref: "#/components/schemas/User"
+
+  /api/profile/update-profile:
+    put:
+      summary: Update user profile info
+      tags: [Profile]
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                phone:
+                  type: string
+                  pattern: ^\+?[0-9]{8,15}$
+      responses:
+        200:
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  user:
+                    $ref: "#/components/schemas/User"
+        400:
+          description: Validation error or phone number used
+
+  /api/profile/update-email:
+    put:
+      summary: Update user email
+      tags: [Profile]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newEmail, password]
+              properties:
+                newEmail:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        200:
+          description: Email updated successfully
+        400:
+          description: Email in use
+        401:
+          description: Incorrect password
+
+  /api/profile/update-password:
+    put:
+      summary: Update user password
+      tags: [Profile]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 6
+      responses:
+        200:
+          description: Password updated successfully
+        401:
+          description: Incorrect current password
+
+  /api/profile/delete-account:
+    delete:
+      summary: Delete user account
+      tags: [Profile]
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+      responses:
+        200:
+          description: Account deleted successfully
+        401:
+          description: Incorrect password
+
+  # ============================
+  # ADMIN
+  # ============================
+  /api/admin/get-all-profiles:
+    get:
+      summary: Get all user profiles (Admin only)
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: sort
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        200:
+          description: All profiles retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  meta:
+                    type: object
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+
+  # ============================
+  # AI
+  # ============================
+  /api/ai/ask:
+    post:
+      summary: Ask the AI a question
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+      responses:
+        200:
+          description: AI response received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answer:
+                    type: string
