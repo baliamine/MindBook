@@ -1,7 +1,7 @@
 const User = require("../models/user");
 const comparePassword = require("../utils/compare.password");
 const hashPassword = require("../utils/hash.password");
-const ApiFeatures = require("../config/api.features");
+const ApiFeatures = require("../Config/api.features");
 
 const getProfile = async (req, res) => {
   try {
