@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Note = require("../models/note");
 const { getFileUrl } = require("../middlewares/upload.file");
 const { deleteFile } = require("../utils/delete.file");
-const ApiFeatures = require("../config/api.features");
+const ApiFeatures = require("../Config/api.features");
 const hashPassword = require("../utils/hash.password");
 const checkNoteLock = require("../utils/check.note.lock");
 
