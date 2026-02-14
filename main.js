@@ -15,9 +15,12 @@ const adminRoutes = require("./routes/admin.routes");
 const aiRoutes = require("./routes/ai.routes");
 
 const app = express();
-
+const corsOptions = {
+  origin: process.env.FRONT_URL,
+  credentials: true,
+};
 // Middlewares
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan("dev"));
