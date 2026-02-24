@@ -20,12 +20,6 @@ exports.registerValidation = [
     .withMessage("Password is required")
     .isLength({ min: 6 })
     .withMessage("Password must be at least 6 characters"),
-
-  body("phone")
-    .notEmpty()
-    .withMessage("Phone is required")
-    .matches(/^\+?[0-9]{8,15}$/)
-    .withMessage("Phone must be a valid number"),
 ];
 
 exports.loginValidation = [

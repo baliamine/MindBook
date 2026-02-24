@@ -37,7 +37,6 @@ const getAllProfiles = async (req, res) => {
 
     const total = await User.countDocuments({ role: { $ne: "admin" } });
 
-
     res.status(200).json({
       message: "Users retrieved successfully",
       meta: {
@@ -56,23 +55,12 @@ const getAllProfiles = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { username, phone } = req.body;
-
-    if (phone) {
-      const existingPhoneNumber = await User.findOne({
-        phone,
-        _id: { $ne: userId }, // exclure l'utilisateur courant
-      });
-
-      if (existingPhoneNumber) {
-        return res.status(400).json({ message: "Phone number already in use" });
-      }
-    }
+    const { username } = req.body;
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { username, phone },
-      { new: true }
+      { username },
+      { new: true },
     );
 
     if (!updatedUser) {

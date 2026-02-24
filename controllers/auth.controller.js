@@ -11,12 +11,7 @@ const generateOTP = () => Math.floor(100000 + Math.random() * 900000);
 
 const Register = async (req, res) => {
   try {
-    const { username, email, password, phone } = req.body;
-    const existingPhoene = await User.findOne({ phone });
-    if (existingPhoene) {
-      return res.status(400).json({ message: "Phone number already in use" });
-    }
-
+    const { username, email, password } = req.body;
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
@@ -28,7 +23,6 @@ const Register = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      phone,
       role: "user",
     });
 
@@ -44,6 +38,7 @@ const Register = async (req, res) => {
     res.status(201).json({
       message: "User registered successfully",
       accessToken,
+      newUser,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -76,6 +71,7 @@ const Login = async (req, res) => {
     res.status(200).json({
       message: "Login successful",
       accessToken,
+      user,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -130,7 +126,7 @@ Si vous n’avez pas demandé cette réinitialisation, ignorez cet email.
 
 Merci,
 L’équipe MindBook
-`
+`,
     );
 
     res.status(200).json({ message: "OTP sent to your email" });

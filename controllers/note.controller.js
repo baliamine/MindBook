@@ -6,7 +6,6 @@ const ApiFeatures = require("../Config/api.features");
 const hashPassword = require("../utils/hash.password");
 const checkNoteLock = require("../utils/check.note.lock");
 
-
 const EditNote = async (req, res) => {
   try {
     const { noteId } = req.params;
@@ -116,7 +115,7 @@ const createNewNote = async (req, res) => {
 const getNoteById = async (req, res) => {
   try {
     const { noteId } = req.params;
-    const { notePassword } = req.body || {};
+    const { notePassword } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(noteId)) {
       return res.status(400).json({ message: "Invalid note ID" });
